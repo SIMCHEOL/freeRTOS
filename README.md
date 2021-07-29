@@ -1,7 +1,7 @@
-Written by Eisen, CBNU, REP of KOREA
-작성자 : 심철, 충북대학교
-작성일 : 2017. 1. 25
-이관일 : 2021. 7. 29
+## Written by Eisen, CBNU, REP of KOREA
+## 작성자 : 심철, 충북대학교
+## 작성일 : 2017. 1. 25
+## 이관일 : 2021. 7. 29
 
 How to compile:
 	make
