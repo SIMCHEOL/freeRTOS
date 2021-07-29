@@ -1,0 +1,13 @@
+Written by Eisen, CBNU, REP of KOREA
+작성자 : 심철, 충북대학교
+작성일 : 2017. 1. 25
+
+How to compile:
+	make
+
+freeRTOS-rtsm.bin: Runable binary on board(u-boot)
+
+Tools:
+	arm-none-eabi-
+
+ARMv7 Cortex-A15 Arndale-5250(Exynos-5250)

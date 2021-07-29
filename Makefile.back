@@ -1,0 +1,92 @@
+include config.mk
+
+ASM_FILES	= $(wildcard Demo/*.S)
+
+C_FILES 	= $(wildcard Demo/*.c) 								 \
+			  $(wildcard Source/*.c)							 \
+			  $(wildcard Source/portable/GCC/ARM_Cortex-A15/*.c) \
+			  $(wildcard Source/portable/MemMang/heap_3.c)		 \
+			  $(wildcard lib/printf.c)							 \
+			  $(wildcard drivers/*.c)
+
+OBJS 		:= $(ASM_FILES:.S=.o) $(C_FILES:.c=.o)
+
+BIN			= $(TARGET).bin
+LD_SCRIPT	= $(PROJECT).lds.S
+OUTPUT 		= $(TARGET).axf
+MAP			= $(PROJECT).map
+
+AS			= $(CROSS_COMPILE)as
+CC			= $(CROSS_COMPILE)gcc
+LD			= $(CROSS_COMPILE)ld
+NM			= $(CROSS_COMPILE)nm
+OBJCOPY		= $(CROSS_COMPILE)objcopy
+OBJDUMP		= $(CROSS_COMPILE)objdump
+
+CFLAGS		= -fPIC -nostdinc -Wall -fno-builtin
+#CFLAGS		= -fPIC
+#CFLAGS		= -fomit-frame-pointer -fPIC -fno-stack-protector
+LDFLAGS		= -static -nostdlib -nodefaultlibs
+
+INCLUDES	= -I Demo
+INCLUDES	+= -I Demo/Common/include
+INCLUDES	+= -I Source/include
+INCLUDES	+= -I Source/portable/GCC/ARM_Cortex-A15
+INCLUDES	+= -I include
+#LIBS		= /root/work/arm-2014.05/arm-none-eabi/lib
+#LIBS		= /usr/lib/arm-none-eabi/lib/libc.a /usr/lib/gcc/arm-none-eabi/4.8.2/libgcc.a
+
+CPPFLAGS	= $(CONFIG_FLAG) $(CFLAGS) $(INCLUDES) -nostartfiles $(LDFLAGS) $(DEBUG_FLAG)
+CPPFLAGS	+= -Wall
+
+#$(OBJS) $(OUTPUT) $(MAP) $(BIN)
+all: 
+	$(AS) -mcpu=cortex-a15 -g Demo/startup.S -o Demo/startup.o
+	$(CC) -mcpu=cortex-a15 $(INCLUDES) -g -c Demo/main.c -o Demo/main.o
+	$(CC) -mcpu=cortex-a15 $(INCLUDES) -g -c Demo/gtimer.c -o Demo/gtimer.o
+	$(CC) -mcpu=cortex-a15 $(INCLUDES) -g -c Demo/gic.c -o Demo/gic.o
+	$(CC) -mcpu=cortex-a15 $(INCLUDES) -g -c drivers/serial.c -o drivers/serial.o
+	$(CC) -mcpu=cortex-a15 $(INCLUDES) -g -c lib/printf.c -o lib/printf.o
+	$(CC) -mcpu=cortex-a15 $(INCLUDES) -g -c lib/vsprintf.c -o lib/vsprintf.o
+	$(CC) -mcpu=cortex-a15 $(INCLUDES) -g -c Source/croutine.c -o Source/croutine.o
+	$(CC) -mcpu=cortex-a15 $(INCLUDES) -g -c Source/list.c -o Source/list.o
+	$(CC) -mcpu=cortex-a15 $(INCLUDES) -g -c Source/queue.c -o Source/queue.o
+	$(CC) -mcpu=cortex-a15 $(INCLUDES) -g -c Source/tasks.c -o Source/tasks.o
+	$(CC) -mcpu=cortex-a15 $(INCLUDES) -g -c Source/timers.c -o Source/timers.o
+	$(CC) -mcpu=cortex-a15 $(INCLUDES) -g -c Source/portable/GCC/ARM_Cortex-A15/port.c -o Source/portable/GCC/ARM_Cortex-A15/port.o
+	$(CC) -mcpu=cortex-a15 $(INCLUDES) -g -c Source/portable/MemMang/heap_1.c -o Source/portable/MemMang/heap_1.o
+	$(LD) -T hello_arndale.ld Demo/main.o Demo/gic.o Demo/gtimer.o Demo/startup.o drivers/serial.o lib/printf.o lib/vsprintf.o Source/croutine.o Source/list.o Source/queue.o Source/tasks.o Source/timers.o Source/portable/GCC/ARM_Cortex-A15/port.o Source/portable/MemMang/heap_1.o -o $(TARGET).elf
+	$(OBJCOPY) -O binary $(TARGET).elf $(BIN)
+	$(OBJDUMP) -D $(TARGET).elf > $(TARGET).dis	
+	mkimage -A arm -a 0xa0000000 -e 0xa0000000 -n FreeRTOS -C none -d $(BIN) freertos_uImage
+	cp $(BIN) /tftpboot/freeRTOS
+	cp freertos_uImage /tftpboot/freertos_uImage
+
+$(MAP): $(OUTPUT)
+	$(NM) $< > $@
+
+clean:
+	rm -f $(MAP) $(OUTPUT) $(BIN) $(OBJS) $(TARGET).elf $(TARGET).dis freertos_uImage
+
+#$(OUTPUT): $(OBJS)
+#$(CC) -Wl,-T,Demo/hello_arndale.ld -nostartfiles -L $(LIBS) -mcpu=cortex-a15 -g -gdwarf-2 -o $@ $(OBJS) -lc -lcs3unhosted 
+
+#$(CC) $(CPPFLAGS) -e Vector_Init -T Demo/generic.ld -o $@ $(OBJS) -L $(LIBS) -lc -lcs3unhosted
+
+$(BIN): $(OUTPUT)
+	$(OBJCOPY) -O binary $(OUTPUT) $(BIN)
+
+%.o: %.S
+	$(CC) $(CPPFLAGS) -I. -c -o $@ $<
+
+%.o: %.c
+	$(CC) $(CPPFLAGS) -I. -c -o $@ $<
+
+%: force
+	$(MAKE) -C $(KERNEL_SRC) $@
+
+force: ;
+
+Makefile: ;
+
+.PHONY: all clean config.mk
